@@ -9,13 +9,20 @@ import subprocess
 
 # MongoDB setup (assuming MongoDB is running locally on default port 27017)
 client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["user_notes"]
+db = client["mynotes"]
 collection = db["notes"]
+
+def log(text):
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{current_time} {text}")
+
 
 def save_note_to_db(name, note, timer):
     """Saves note with a timer in MongoDB."""
     collection.insert_one({"name": name, "note": note, "timer": timer, "displayed": False})
-    print(f"Note saved as '{name}' with timer set for {timer}")
+    log(f"Note saved as '{name}' with timer set for {timer}")
+
+
 
 def retrieve_note_and_show(name):
     """Retrieve the note from MongoDB and display it using kdialog."""
@@ -27,6 +34,7 @@ def retrieve_note_and_show(name):
         # Optionally, delete the note after it's displayed
         collection.delete_one({"name": name})
 
+
 def set_timer(name, timer):
     """Schedules a job at the specified datetime to display the note."""
     schedule_time = parser.parse(timer)
@@ -36,7 +44,8 @@ def set_timer(name, timer):
         delay_seconds = (schedule_time - current_time).total_seconds()
         schedule.enter(delay_seconds, 1, retrieve_note_and_show, (name,))
     else:
-        print("The specified time is in the past.")
+        log(f"ERROR: The specified time {timer} is in the past.")
+
 
 def is_valid_date(date_string, date_format="%Y-%m-%d"):
     try:
@@ -47,28 +56,30 @@ def is_valid_date(date_string, date_format="%Y-%m-%d"):
         # If parsing fails, return False
         return False
 
+
 def main():
     # Check if arguments are provided
-    if len(sys.argv) < 3:
-        print("Usage: mynotes.py 'mynotes_dir'")
+    if len(sys.argv) < 2:
+        log("Usage: mynotes.py 'mynotes_dir'")
         return
 
     # Parse arguments
     mynotes_dir = sys.argv[1]
 
-    # Run the scheduler continuousl
-
+    # Run the scheduler continuously
     while os.path.exists("/tmp/.mynotes.running"):
 
-        print("Waiting for notes...")
+        log("mynotes server started.  Waiting for work...")
 
-        # Work comes in by way of a file in /home/mynotes/  Any file name is acceptable and
+        # Work comes in by way of a file in /home/mynotes/nnnnn.txt  Any file name is acceptable and
         # it will be used as the name under which it is logged to MongoDB
         if any(os.path.isfile(os.path.join(mynotes_dir, f)) for f in os.listdir(mynotes_dir)):
 
             # We have work to do.  Read that work from the file, log it, and set the timer
             for filename in os.listdir(mynotes_dir):
                 file_path = os.path.join(mynotes_dir, filename)
+
+                log(f"Processing file {file_path}")
 
                 note=""
                 sched=""
@@ -98,6 +109,8 @@ def main():
 
         
         time.sleep(10)
+    
+    log("mynotes shutting down")
 
 if __name__ == "__main__":
     main()
