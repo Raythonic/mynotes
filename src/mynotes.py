@@ -1,3 +1,4 @@
+#!/bin/env python
 #######################################################################################################################
 # This python program is a continously running "server" that scans for work in /home/rwalk/mynotes/nnnnn.txt file
 # then logs those messages in mongodb.  There is a schedule associated with the note.  When that expires,
@@ -9,7 +10,7 @@
 
 import sys
 import os
-import schedule
+import threading
 import time
 import pymongo
 from datetime import datetime
@@ -28,34 +29,70 @@ collection = db["notes"]
 
 log("Connected to mongodb")
 
-def save_note_to_db(name, note, timer):
-    """Saves note with a timer in MongoDB."""
-    collection.insert_one({"name": name, "note": note, "timer": timer, "displayed": False})
-    log(f"Note saved as '{name}' with timer set for {timer}")
-
-
+def save_note_to_db(name, note, sched):
+    """Saves note with a timer in MongoDB. Updates if the document exists, otherwise inserts."""
+    # Create a filter to find the document by name
+    filter = {"name": name}
+    
+    # Create an update operation
+    update = {
+        "$set": {
+            "note": note,
+            "sched": sched,
+            "displayed": False
+        }
+    }
+    
+    # Use update_one with the upsert option
+    collection.update_one(filter, update, upsert=True)
+    
+    log(f"Note inserted as '{name}' with timer set for {sched}")
 
 def retrieve_note_and_show(name):
     """Retrieve the note from MongoDB and display it using kdialog."""
+
+    log(f"Timer for {name} popped")
+
     result = collection.find_one({"name": name})
+
+
     if result:
-        note = result["note"]
-        subprocess.run(["kdialog", "--msgbox", note])
+        os.environ["DISPLAY"] = ":0"
+        subprocess.Popen(["notify-send", "--expire-time=0", "From mynotes server", result["note"]])
 
-        # Optionally, delete the note after it's displayed
-        collection.delete_one({"name": name})
+        # Mark note as displayed
+        filter = {"name": name}
+    
+        # Create an update operation
+        update = {
+            "$set": {
+                "displayed": True
+            }
+        }
+        
+        # Use update_one with the upsert option
+        collection.update_one(filter, update)
+    else:
+        log(f"ERROR: {name} was not found in MongoDB")
 
 
-def set_timer(name, timer):
+def schedule_note(name, sched):
     """Schedules a job at the specified datetime to display the note."""
-    schedule_time = parser.parse(timer)
+    # Parse the "yyyy-mm-dd hh:mm:ss" formatted string into a datetime object
+    schedule_time = parser.parse(sched)
     current_time = datetime.now()
 
     if schedule_time > current_time:
+        # Calculate the delay in seconds
         delay_seconds = (schedule_time - current_time).total_seconds()
-        schedule.enter(delay_seconds, 1, retrieve_note_and_show, (name,))
+        
+        # Use threading.Timer to run the function after delay_seconds
+        threading.Timer(delay_seconds, retrieve_note_and_show, args=[name]).start()
+        
+        log(f"{name} has been scheduled for {sched} (in {delay_seconds} seconds)")
     else:
-        log(f"ERROR: The specified time {timer} is in the past.")
+        log(f"Running {name} now")
+        retrieve_note_and_show(name)
 
 
 def is_valid_date(date_string, date_format="%Y-%m-%d %H:%M:%S"):
@@ -85,7 +122,7 @@ def main():
     mynotes_dir = sys.argv[1]
 
     log("mynotes server started.  Waiting for work...")
-    
+
     # Run the scheduler continuously
     while os.path.exists("/tmp/.mynotes.running"):
 
@@ -119,22 +156,24 @@ def main():
                                 # If we don't have a schedule, get it
                                 if not sched:
                                     sched = ' '.join(line.split()[:2])
-                                    note = ' '.join(line.split()[1:])
+                                    note = ' '.join(line.split()[2:])
 
                         if is_valid_date(sched):
-                            save_note_to_db(filename, note, sched)
+                            name = f"note:{filename.split('.')[0]}"
+
+                            save_note_to_db(name, note, sched)
 
                             log(f"Removing {file_path}")
                             os.remove(file_path)
 
-                            log(f"Schedule {file_path} for {sched}")
-                            set_timer(filename, sched)
+                            log(f"Scheduling {name} for {sched}")
+                            schedule_note(name, sched)
                         else:
                             print(f"ERROR: {sched} is not a valid date and time.")
         
-        time.sleep(10)
+        time.sleep(1)
     
-    log("mynotes shutting down")
+    log("mynotes server shutting down")
 
 if __name__ == "__main__":
     main()
