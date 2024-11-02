@@ -23,22 +23,21 @@ def log(text):
     print(f"{current_time} {text}", flush=True)
 
 # MongoDB setup (assuming MongoDB is running locally on default port 27017)
-client = pymongo.MongoClient("mongodb://localhost:27017/")
+client = pymongo.MongoClient(os.environ['MONGODB'])
 db = client["mynotes"]
 collection = db["notes"]
+timers = {}
 
 log("Connected to mongodb")
 
 def cancel_note(name):
-    result = collection.find_one({"name": name})
+    if name in timers:
+        timers[name].stop()
+        del timers[name]
 
-    if result:
-        if result['timer']:
-            result['timer'].stop()
-            log(f"{name} timer stopped")
-
-        collection.delete_one({"name": name})
-        log(f"{name} cancelled")
+        log(f"Timer for {name} cancelled")
+    else:
+        log(f"ERROR: No timer found for {name}")
 
 
 def show_notes():
@@ -49,7 +48,7 @@ def show_notes():
     for note in notes:
         log(f"Name: {note['name']} Sched: {note['sched']} Displayed: {note['displayed']}")
 
-def save_note_to_db(name, sched, note, timer=None):
+def save_note_to_db(name, sched, note):
     """Saves note with a timer in MongoDB. Updates if the document exists, otherwise inserts."""
     # Create a filter to find the document by name
     filter = {"name": name}
@@ -59,7 +58,6 @@ def save_note_to_db(name, sched, note, timer=None):
         "$set": {
             "note": note,
             "sched": sched,
-            "timer": timer,
             "displayed": False
         }
     }
@@ -68,6 +66,25 @@ def save_note_to_db(name, sched, note, timer=None):
     collection.update_one(filter, update, upsert=True)
     
     log(f"Note inserted as '{name}' with timer set for {sched}")
+
+
+def post_note(name, sched, note):
+
+    filename = name.replace(":", "")
+
+    # Define the directory where notes will be stored
+    postits_dir = os.path.expanduser('~/PostIts')
+
+    # Create the directory if it doesn't exist
+    os.makedirs(postits_dir, exist_ok=True)
+
+    # Construct the file path
+    file_path = os.path.join(postits_dir, f"{filename}.txt")
+
+    # Write the note to the file
+    with open(file_path, 'w') as postit_file:
+        postit_file.write(f"{sched} {note}")
+    
 
 def retrieve_note_and_show(name):
     """Retrieve the note from MongoDB and display it using kdialog."""
@@ -79,6 +96,7 @@ def retrieve_note_and_show(name):
     if result:
         os.environ["DISPLAY"] = ":0"
         subprocess.Popen(["notify-send", "--expire-time=0", "From mynotes server", result["note"]])
+        post_note(result['name'], result['sched'], result['note'])
 
         # Mark note as displayed
         filter = {"name": name}
@@ -86,7 +104,6 @@ def retrieve_note_and_show(name):
         # Create an update operation
         update = {
             "$set": {
-                "timer": None,
                 "displayed": True
             }
         }
@@ -99,6 +116,8 @@ def retrieve_note_and_show(name):
 
 def schedule_note(name, sched, note):
     """Schedules a job at the specified datetime to display the note."""
+    save_note_to_db(name, sched, note)
+
     # Parse the "yyyy-mm-dd hh:mm:ss" formatted string into a datetime object
     schedule_time = parser.parse(sched)
     current_time = datetime.now()
@@ -108,16 +127,10 @@ def schedule_note(name, sched, note):
         delay_seconds = (schedule_time - current_time).total_seconds()
         
         # Use threading.Timer to run the function after delay_seconds
-        timer = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name])
-
-        save_note_to_db(name, sched, note, timer)
-
-        timer.start()
-        
+        timers['name'] = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name]).start()
+       
         log(f"{name} has been scheduled for {sched} (in {delay_seconds} seconds)")
     else:
-        save_note_to_db(name, sched, note)
-
         log(f"Running {name} now")
         retrieve_note_and_show(name)
 

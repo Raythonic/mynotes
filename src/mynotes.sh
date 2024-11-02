@@ -11,6 +11,9 @@
 
 declare mydir="$HOME/mynotes"
 declare log="$HOME/logs/mynotes.log"
+declare server_running="/tmp/.mynotes.running"
+
+export MONGODB="mongodb://localhost:27017/"
 
 # Initalize .settings is the is a first run
 if [ ! -d $HOME/mynotes ]
@@ -58,13 +61,25 @@ valid_sched_format() {
 
 start_server ()
 {
-    touch /tmp/.mynotes.running
-    $HOME/bin/mynotes.py $mydir >> $log &
+    if [ ! -f $server_running ]
+    then
+        touch $server_running
+        $HOME/bin/mynotes.py $mydir >> $log &
+        echo "mynotes server started"
+    else
+        echo "mynotes server is already running"
+    fi
 }
 
 stop_server ()
 {
-    rm /tmp/.mynotes.running
+    if [ -f $server_running ]
+    then
+        rm $server_running
+        echo "mynotes server stopped"
+    else
+        echo "mynotes server not running"
+    fi
 }
 
 show_notes ()
@@ -130,6 +145,20 @@ case "$option" in
     "stop")
         stop_server
         ;;
+    
+    "restart")
+        stop_server
+        start_server
+        ;;
+
+    "status")
+        if [ -f $server_running ]
+        then 
+            echo "mynotes server is running"
+        else
+            echo "nynotes server is not running"
+        fi
+        ;;
 
     "show")
         show_notes
@@ -140,7 +169,7 @@ case "$option" in
         ;;
     
     *)
-        if [ -f /tmp/.mynotes.running ]
+        if [ -f $server_running ]
         then
             schedule_note "$1" "$2"
         else
