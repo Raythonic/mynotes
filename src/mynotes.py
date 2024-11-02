@@ -4,6 +4,11 @@
 # then logs those messages in mongodb.  There is a schedule associated with the note.  When that expires,
 # the note will popup on the KDE desktop and then be deleted from the mongodb database.
 #
+# Commands can be issued by placing the command and its arguments in mynote/command file.
+#   Valid commands:
+#           show - List all notes in the database
+#           cancel nnn - Cancel the timer for note nnn
+#
 # See mynotes.sh for the script that you should interface with.  This Python program is not meant to be run
 # from the commandline, though with care it can.  But you have to emulate what mynotes.sh does
 #######################################################################################################################
@@ -18,30 +23,82 @@ from dateutil import parser
 import subprocess
 import re
 
+timers          = {}
+running_file    = "/tmp/.mynotes.running"
+
+#################################################################################
+# Timestamp a message
+#################################################################################
 def log(text):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{current_time} {text}", flush=True)
 
+
+
+#################################################################################
+# Remove running file and exit with code passed
+#################################################################################
+def get_out(code):
+    os.remove(running_file)
+    sys.exit(code)
+
+
+
 # MongoDB setup (assuming MongoDB is running locally on default port 27017)
 client = pymongo.MongoClient(os.environ['MONGODB'])
-db = client["mynotes"]
-collection = db["notes"]
-timers = {}
 
-log("Connected to mongodb")
+if client:
+    log("Connected to mongodb")
+    db = client["mynotes"]
+    collection = db["notes"]
+else:
+    log("ERROR: Failed to connect to mongodb")
+    get_out(1)
 
+
+
+#################################################################################
+# Restart all the timers (run upon startup)
+#################################################################################
+def catchup():
+    notes = collection.find({"displayed": False})
+
+    log("Reading notes from mongo that have not been yet displayed")
+
+    for note in notes:
+        log(f"Restarting timer for: Name: {note['name']} Sched: {note['sched']}")
+        schedule_note(note['name'], note['sched'])
+
+
+
+#################################################################################
+# Cancel a note's schedule
+#################################################################################
 def cancel_note(name):
     timer_name = name.replace(":", "")
     
     if timer_name in timers:
+
+        # Stop the timers
         timers[timer_name].cancel()
+
+        # Remove the timer object
         del timers[timer_name]
 
         log(f"Timer for {name} cancelled")
+     
+        # Use update_one with the upsert option
+        collection.delete_one({"name": name})
+        
+        log(f"Note '{name}' deleted from database")
+
     else:
         log(f"ERROR: No timer found for {name}")
 
 
+#################################################################################
+# Show all notes from the database 
+#################################################################################
 def show_notes():
     notes = collection.find()
 
@@ -50,8 +107,11 @@ def show_notes():
     for note in notes:
         log(f"Name: {note['name']} Sched: {note['sched']} Displayed: {note['displayed']}")
 
+#################################################################################
+# Save a note to the database.  Update it if it already exists.
+#################################################################################
 def save_note_to_db(name, sched, note):
-    """Saves note with a timer in MongoDB. Updates if the document exists, otherwise inserts."""
+
     # Create a filter to find the document by name
     filter = {"name": name}
     
@@ -70,6 +130,9 @@ def save_note_to_db(name, sched, note):
     log(f"Note inserted as '{name}' with timer set for {sched}")
 
 
+#################################################################################
+# Post the note to the Post its folder for the desktop
+#################################################################################
 def post_note(name, sched, note):
 
     filename = name.replace(":", "")
@@ -88,9 +151,11 @@ def post_note(name, sched, note):
         postit_file.write(f"{sched} {note}")
     
 
+#################################################################################
+# Read a note from the database and notify KDE
+#################################################################################
 def retrieve_note_and_show(name):
-    """Retrieve the note from MongoDB and display it using kdialog."""
-
+     
     log(f"Timer for {name} popped")
 
     result = collection.find_one({"name": name})
@@ -116,14 +181,15 @@ def retrieve_note_and_show(name):
         log(f"ERROR: {name} was not found in MongoDB")
 
 
-def schedule_note(name, sched, note):
-    """Schedules a job at the specified datetime to display the note."""
-    save_note_to_db(name, sched, note)
+#################################################################################
+# Schedule a note and start its timer
+#################################################################################
+def schedule_note(name, sched):
 
     # Parse the "yyyy-mm-dd hh:mm:ss" formatted string into a datetime object
-    schedule_time = parser.parse(sched)
-    current_time = datetime.now()
-    timer_name = name.replace(":", "")
+    schedule_time   = parser.parse(sched)
+    current_time    = datetime.now()
+    timer_name      = name.replace(":", "")
 
     if schedule_time > current_time:
         # Calculate the delay in seconds
@@ -140,6 +206,9 @@ def schedule_note(name, sched, note):
         retrieve_note_and_show(name)
 
 
+#################################################################################
+# Check the date format
+#################################################################################
 def is_valid_date(date_string, date_format="%Y-%m-%d %H:%M:%S"):
     try:
         # Attempt to parse the date_string with the specified format
@@ -150,6 +219,9 @@ def is_valid_date(date_string, date_format="%Y-%m-%d %H:%M:%S"):
         return False
 
 
+#################################################################################
+# Validate file name found in work queue ($HOME/mynotes/*.txt)
+#################################################################################
 def is_valid_filename(filename):
 
     if filename == "command":
@@ -160,6 +232,9 @@ def is_valid_filename(filename):
     return bool(re.match(pattern, filename))
 
 
+#################################################################################
+# Execute user's command from mynotes/command file
+#################################################################################
 def process_command(command):
     log(f"Command:{command}")
     if command == "show":
@@ -169,21 +244,31 @@ def process_command(command):
         name = f"note:{command.split(":")[1]}"
         cancel_note(name)
 
+
+#################################################################################
+#                               MAIN LOGIC                                      #
+#################################################################################
 def main():
 
     # Check if arguments are provided
     if len(sys.argv) < 2:
         log("Usage: mynotes.py 'mynotes_dir'")
-        return
+        get_out(0)
 
     # Parse arguments
     mynotes_dir = sys.argv[1]
 
     log("mynotes server started.")
+    caught_up = False
     wait_msg_issued = False
 
     # Run the scheduler continuously
-    while os.path.exists("/tmp/.mynotes.running"):
+    while os.path.exists(running_file):
+
+        # Restart timers for undisplayed notes
+        if not caught_up:
+            catchup()
+            caught_up = True
 
         # Work comes in by way of a file in /home/mynotes/nnnnn.txt  Any file name is acceptable and
         # it will be used as the name under which it is logged to MongoDB
@@ -220,7 +305,8 @@ def main():
                                 name = f"note:{filename.split('.')[0]}"
 
                                 log(f"Scheduling {name} for {sched}")
-                                schedule_note(name, sched, note)
+                                save_note_to_db(name, sched, note)
+                                schedule_note(name, sched)
                             else:
                                 log(f"ERROR: {sched} is not a valid date and time.")
 
@@ -236,5 +322,11 @@ def main():
     
     log("mynotes server shutting down")
 
+
+#################################################################################
+#################################################################################
+#                               Program start                                   #
+#################################################################################
+#################################################################################
 if __name__ == "__main__":
     main()

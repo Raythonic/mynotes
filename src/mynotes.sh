@@ -156,7 +156,7 @@ case "$option" in
         then 
             echo "mynotes server is running"
         else
-            echo "nynotes server is not running"
+            echo "mynotes server is not running"
         fi
         ;;
 
