@@ -31,9 +31,11 @@ timers = {}
 log("Connected to mongodb")
 
 def cancel_note(name):
-    if name in timers:
-        timers[name].stop()
-        del timers[name]
+    timer_name = name.replace(":", "")
+    
+    if timer_name in timers:
+        timers[timer_name].cancel()
+        del timers[timer_name]
 
         log(f"Timer for {name} cancelled")
     else:
@@ -121,13 +123,16 @@ def schedule_note(name, sched, note):
     # Parse the "yyyy-mm-dd hh:mm:ss" formatted string into a datetime object
     schedule_time = parser.parse(sched)
     current_time = datetime.now()
+    timer_name = name.replace(":", "")
 
     if schedule_time > current_time:
         # Calculate the delay in seconds
         delay_seconds = (schedule_time - current_time).total_seconds()
         
         # Use threading.Timer to run the function after delay_seconds
-        timers['name'] = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name]).start()
+        timers[timer_name] = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name])
+                                             
+        timers[timer_name].start()
        
         log(f"{name} has been scheduled for {sched} (in {delay_seconds} seconds)")
     else:
