@@ -67,6 +67,27 @@ stop_server ()
     rm /tmp/.mynotes.running
 }
 
+show_notes ()
+{
+    echo "show" > $mydir/command
+    echo "See output in $HOME/logs/mynotes.log"
+}
+
+cancel_note ()
+{
+    local name="$1"
+
+    if [ $(echo "$name" | grep -c -E "^[0-9]+$") -gt 0 ]
+    then 
+        echo "cancel:$name" > $mydir/command
+        echo "See output in $HOME/logs/mynotes.log"
+    else
+        echo "$name is not a proper numercial name,"
+        echo "assigned when the note was submitted via:"
+        echo "        mynotes note"
+    fi
+}
+
 schedule_note ()
 {
     text="$1"
@@ -108,6 +129,14 @@ case "$option" in
     
     "stop")
         stop_server
+        ;;
+
+    "show")
+        show_notes
+        ;;
+
+    "cancel")
+        cancel_note "$2"
         ;;
     
     *)

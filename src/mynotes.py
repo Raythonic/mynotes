@@ -29,7 +29,27 @@ collection = db["notes"]
 
 log("Connected to mongodb")
 
-def save_note_to_db(name, note, sched):
+def cancel_note(name):
+    result = collection.find_one({"name": name})
+
+    if result:
+        if result['timer']:
+            result['timer'].stop()
+            log(f"{name} timer stopped")
+
+        collection.delete_one({"name": name})
+        log(f"{name} cancelled")
+
+
+def show_notes():
+    notes = collection.find()
+
+    log("Reading notes from mongo")
+
+    for note in notes:
+        log(f"Name: {note['name']} Sched: {note['sched']} Displayed: {note['displayed']}")
+
+def save_note_to_db(name, sched, note, timer=None):
     """Saves note with a timer in MongoDB. Updates if the document exists, otherwise inserts."""
     # Create a filter to find the document by name
     filter = {"name": name}
@@ -39,6 +59,7 @@ def save_note_to_db(name, note, sched):
         "$set": {
             "note": note,
             "sched": sched,
+            "timer": timer,
             "displayed": False
         }
     }
@@ -55,7 +76,6 @@ def retrieve_note_and_show(name):
 
     result = collection.find_one({"name": name})
 
-
     if result:
         os.environ["DISPLAY"] = ":0"
         subprocess.Popen(["notify-send", "--expire-time=0", "From mynotes server", result["note"]])
@@ -66,6 +86,7 @@ def retrieve_note_and_show(name):
         # Create an update operation
         update = {
             "$set": {
+                "timer": None,
                 "displayed": True
             }
         }
@@ -76,7 +97,7 @@ def retrieve_note_and_show(name):
         log(f"ERROR: {name} was not found in MongoDB")
 
 
-def schedule_note(name, sched):
+def schedule_note(name, sched, note):
     """Schedules a job at the specified datetime to display the note."""
     # Parse the "yyyy-mm-dd hh:mm:ss" formatted string into a datetime object
     schedule_time = parser.parse(sched)
@@ -87,10 +108,16 @@ def schedule_note(name, sched):
         delay_seconds = (schedule_time - current_time).total_seconds()
         
         # Use threading.Timer to run the function after delay_seconds
-        threading.Timer(delay_seconds, retrieve_note_and_show, args=[name]).start()
+        timer = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name])
+
+        save_note_to_db(name, sched, note, timer)
+
+        timer.start()
         
         log(f"{name} has been scheduled for {sched} (in {delay_seconds} seconds)")
     else:
+        save_note_to_db(name, sched, note)
+
         log(f"Running {name} now")
         retrieve_note_and_show(name)
 
@@ -106,10 +133,23 @@ def is_valid_date(date_string, date_format="%Y-%m-%d %H:%M:%S"):
 
 
 def is_valid_filename(filename):
+
+    if filename == "command":
+        return True
+    
     # Regular expression to match 1 to 20 digits followed by ".txt"
     pattern = r'^\d{1,20}\.txt$'
     return bool(re.match(pattern, filename))
 
+
+def process_command(command):
+    log(f"Command:{command}")
+    if command == "show":
+        show_notes()
+    
+    if command.startswith("cancel:"):
+        name = f"note:{command.split(":")[1]}"
+        cancel_note(name)
 
 def main():
 
@@ -121,7 +161,8 @@ def main():
     # Parse arguments
     mynotes_dir = sys.argv[1]
 
-    log("mynotes server started.  Waiting for work...")
+    log("mynotes server started.")
+    wait_msg_issued = False
 
     # Run the scheduler continuously
     while os.path.exists("/tmp/.mynotes.running"):
@@ -138,38 +179,40 @@ def main():
                     file_path = os.path.join(mynotes_dir, filename)
 
                     log(f"Processing file {file_path}")
-
-                    note=""
-                    sched=""
                     
                     # Ensure we only process files
                     if os.path.isfile(file_path):
 
+                        text = ""
                         # Read the file in.  First line must be schedule
                         with open(file_path, 'r') as file:
 
                             # Read each line in the file
                             for line in file:
+                                text += line
 
-                                note = line
-
-                                # If we don't have a schedule, get it
-                                if not sched:
-                                    sched = ' '.join(line.split()[:2])
-                                    note = ' '.join(line.split()[2:])
-
-                        if is_valid_date(sched):
-                            name = f"note:{filename.split('.')[0]}"
-
-                            save_note_to_db(name, note, sched)
-
-                            log(f"Removing {file_path}")
-                            os.remove(file_path)
-
-                            log(f"Scheduling {name} for {sched}")
-                            schedule_note(name, sched)
+                        # If a command came in, run that command
+                        if filename == "command":
+                            process_command(text.strip())
                         else:
-                            print(f"ERROR: {sched} is not a valid date and time.")
+                            sched = ' '.join(text.split()[:2])
+                            note = ' '.join(text.split()[2:])
+
+                            if is_valid_date(sched):
+                                name = f"note:{filename.split('.')[0]}"
+
+                                log(f"Scheduling {name} for {sched}")
+                                schedule_note(name, sched, note)
+                            else:
+                                log(f"ERROR: {sched} is not a valid date and time.")
+
+                        log(f"Removing {file_path}")
+                        os.remove(file_path)
+        
+        
+        if not wait_msg_issued:
+            log("Waiting for work...")
+            wait_msg_issued = True
         
         time.sleep(1)
     
