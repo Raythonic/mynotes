@@ -11,8 +11,8 @@
 
 declare mydir="$HOME/mynotes"
 declare log="$HOME/logs/mynotes.log"
-declare server_running="/tmp/.mynotes.running"
 
+export MYNOTES_RUNNING="/tmp/.mynotes.running"
 export MONGODB="mongodb://localhost:27017/"
 
 # Initalize .settings is the is a first run
@@ -64,9 +64,9 @@ valid_sched_format() {
 #######################################################################################################################
 start_server ()
 {
-    if [ ! -f $server_running ]
+    if [ ! -f $MYNOTES_RUNNING ]
     then
-        touch $server_running
+        touch $MYNOTES_RUNNING
         $HOME/bin/mynotes.py $mydir >> $log &
         echo "mynotes server started"
     else
@@ -80,9 +80,9 @@ start_server ()
 #######################################################################################################################
 stop_server ()
 {
-    if [ -f $server_running ]
+    if [ -f $MYNOTES_RUNNING ]
     then
-        rm $server_running
+        rm $MYNOTES_RUNNING
         echo "mynotes server stopped"
     else
         echo "mynotes server not running"
@@ -114,6 +114,15 @@ cancel_note ()
     else
         echo "ERROR: $name is not a proper name"
     fi
+}
+
+#######################################################################################################################
+# Purge database
+#######################################################################################################################
+purge_database ()
+{
+    echo "purge" > $mydir/command
+    echo "See output in $HOME/logs/mynotes.log"
 }
 
 #######################################################################################################################
@@ -169,7 +178,7 @@ case "$option" in
         ;;
 
     "status")
-        if [ -f $server_running ]
+        if [ -f $MYNOTES_RUNNING ]
         then 
             echo "mynotes server is running"
         else
@@ -184,9 +193,13 @@ case "$option" in
     "cancel")
         cancel_note "$2"
         ;;
+
+    "purge")
+        purge_database
+        ;;
     
     *)
-        if [ -f $server_running ]
+        if [ -f $MYNOTES_RUNNING ]
         then
             schedule_note "$1" "$2"
         else

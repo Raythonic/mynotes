@@ -24,7 +24,7 @@ import subprocess
 import re
 
 timers          = {}
-running_file    = "/tmp/.mynotes.running"
+server_running  = os.environ['MYNOTES_RUNNING']
 
 #################################################################################
 # Timestamp a message
@@ -39,22 +39,8 @@ def log(text):
 # Remove running file and exit with code passed
 #################################################################################
 def get_out(code):
-    os.remove(running_file)
+    os.remove(server_running)
     sys.exit(code)
-
-
-
-# MongoDB setup (assuming MongoDB is running locally on default port 27017)
-client = pymongo.MongoClient(os.environ['MONGODB'])
-
-if client:
-    log("Connected to mongodb")
-    db = client["mynotes"]
-    collection = db["notes"]
-else:
-    log("ERROR: Failed to connect to MongoDB")
-    get_out(1)
-
 
 
 #################################################################################
@@ -108,12 +94,29 @@ def show_notes():
 
     # Show each note from the database
     for note in notes:
-        status = f"Displayed: {note['note']}"
 
-        if not note['displayed']:
-            status = f"NOT displayed: {note['note']}"
+        if note['displayed']:
+            if note['sched'] == "1970-01-01 00:00:00":
+                status = "was displayed immediately"
+            else:
+                status = f"was displayed at {note['sched']}"
+        else:
+            status = f"will be displayed at {note['sched']}"
 
-        log(f"Name: {note['name']} Sched: {note['sched']} {status}")
+        log(f"{note['name']} {status} =>  \"{note['note']}\"")
+
+
+
+#################################################################################
+# Purge MongoDB database
+#################################################################################
+def purge_database():
+
+    # Cancel all timers first
+    stop_timers()
+
+    collection.delete_many({})
+    log("MongoDB database purged")
 
 
 
@@ -137,7 +140,7 @@ def save_note_to_db(name, sched, note):
     # Use update_one with the upsert option
     collection.update_one(filter, update, upsert=True)
     
-    log(f"Note inserted as '{name}' with timer set for {sched}")
+    log(f"Note saved as '{name}' with timer set for {sched}")
 
 
 
@@ -251,7 +254,6 @@ def is_valid_filename(filename):
     return bool(re.match(pattern, filename))
 
 
-
 #################################################################################
 # Execute user's command from mynotes/command file
 #################################################################################
@@ -260,13 +262,23 @@ def process_command(command):
     log(f"Command:{command}")
 
     # Determine the command and execute it
+
+    # Show all the notes in the database
     if command == "show":
         show_notes()
-    
-    if command.startswith("cancel:"):
-        name = f"note{command.split(":")[1]}"
+        return
 
-        if name != "noteall":
+    # Show all the notes in the database
+    if command == "purge":
+        purge_database()
+        return
+    
+    # Cancel a note's schedule
+    if command.startswith("cancel:"):
+        note_num = command.split(":")[1]
+        name = f"note{note_num}"
+
+        if note_num != "all":
             cancel_note(name)
         else:
             notes = collection.find({"displayed": False})
@@ -274,7 +286,19 @@ def process_command(command):
             # Each note not displayed yet, schedule it for the time remaining
             for note in notes:
                 cancel_note(note['name'])
+        return
+    
+    log(f"ERROR: Command {command} not recognized")
 
+
+#################################################################################
+# Stop all timers
+#################################################################################
+def stop_timers():
+    for timer in timers.values():
+        timer.cancel()
+
+    log("All timers cancelled")
 
 
 #################################################################################
@@ -290,12 +314,12 @@ def main():
     # Parse arguments
     mynotes_dir = sys.argv[1]
 
-    log("mynotes server started.")
+    log("mynotes server started")
     caught_up       = False
     wait_msg_issued = False
 
     # Run the scheduler continuously
-    while os.path.exists(running_file):
+    while os.path.exists(server_running):
 
         # Restart timers for undisplayed notes
         if not caught_up:
@@ -340,7 +364,7 @@ def main():
                                 save_note_to_db(name, sched, note)
                                 schedule_note(name, sched)
                             else:
-                                log(f"ERROR: {sched} is not a valid date and time.")
+                                log(f"ERROR: {sched} is not a valid date and time")
 
                         log(f"Removing {file_path}")
                         os.remove(file_path)
@@ -352,6 +376,8 @@ def main():
         
         time.sleep(1)
     
+    
+    stop_timers()
     log("mynotes server shutting down")
 
 
@@ -360,5 +386,19 @@ def main():
 #                               Program start                                   #
 #################################################################################
 #################################################################################
+
+
+# MongoDB setup (assuming MongoDB is running locally on default port 27017)
+client = pymongo.MongoClient(os.environ['MONGODB'])
+
+if client:
+    log("Connected to MongoDB database")
+    db = client["mynotes"]
+    collection = db["notes"]
+else:
+    log("ERROR: Failed to connect to MongoDB")
+    get_out(1)
+
+
 if __name__ == "__main__":
     main()
