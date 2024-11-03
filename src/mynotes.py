@@ -75,25 +75,28 @@ def catchup():
 # Cancel a note's schedule
 #################################################################################
 def cancel_note(name):
-    timer_name = name.replace(":", "")
     
-    if timer_name in timers:
+    # If the timer object exists...
+    if name in timers:
 
         # Stop the timers
-        timers[timer_name].cancel()
+        timers[name].cancel()
 
         # Remove the timer object
-        del timers[timer_name]
+        del timers[name]
 
         log(f"Timer for {name} cancelled")
-     
-        # Use update_one with the upsert option
-        collection.delete_one({"name": name})
-        
-        log(f"Note '{name}' deleted from database")
 
     else:
         log(f"ERROR: No timer found for {name}")
+
+    # Use update_one with the upsert option
+    result = collection.delete_one({"name": name})
+    
+    # If note was found...
+    if result.deleted_count > 0:
+        log(f"Note '{name}' deleted from database")
+
 
 
 #################################################################################
@@ -105,7 +108,9 @@ def show_notes():
     log("Reading notes from mongo")
 
     for note in notes:
-        log(f"Name: {note['name']} Sched: {note['sched']} Displayed: {note['displayed']}")
+        log(f"Name: {note['name']} Sched: {note['sched']} Displayed: {note['displayed']} {note['note']}")
+
+
 
 #################################################################################
 # Save a note to the database.  Update it if it already exists.
@@ -189,16 +194,15 @@ def schedule_note(name, sched):
     # Parse the "yyyy-mm-dd hh:mm:ss" formatted string into a datetime object
     schedule_time   = parser.parse(sched)
     current_time    = datetime.now()
-    timer_name      = name.replace(":", "")
 
     if schedule_time > current_time:
         # Calculate the delay in seconds
         delay_seconds = (schedule_time - current_time).total_seconds()
         
         # Use threading.Timer to run the function after delay_seconds
-        timers[timer_name] = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name])
+        timers[name] = threading.Timer(delay_seconds, retrieve_note_and_show, args=[name])
                                              
-        timers[timer_name].start()
+        timers[name].start()
        
         log(f"{name} has been scheduled for {sched} (in {delay_seconds} seconds)")
     else:
@@ -241,7 +245,7 @@ def process_command(command):
         show_notes()
     
     if command.startswith("cancel:"):
-        name = f"note:{command.split(":")[1]}"
+        name = f"note{command.split(":")[1]}"
         cancel_note(name)
 
 
@@ -302,7 +306,7 @@ def main():
                             note = ' '.join(text.split()[2:])
 
                             if is_valid_date(sched):
-                                name = f"note:{filename.split('.')[0]}"
+                                name = f"note{filename.split('.')[0]}"
 
                                 log(f"Scheduling {name} for {sched}")
                                 save_note_to_db(name, sched, note)
