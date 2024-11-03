@@ -148,6 +148,7 @@ case "$option" in
     
     "restart")
         stop_server
+        sleep 3
         start_server
         ;;
 

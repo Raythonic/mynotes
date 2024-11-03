@@ -52,7 +52,7 @@ if client:
     db = client["mynotes"]
     collection = db["notes"]
 else:
-    log("ERROR: Failed to connect to mongodb")
+    log("ERROR: Failed to connect to MongoDB")
     get_out(1)
 
 
@@ -63,7 +63,7 @@ else:
 def catchup():
     notes = collection.find({"displayed": False})
 
-    log("Reading notes from mongo that have not been yet displayed")
+    log("Looking for notes from mongodb that have not been yet displayed...")
 
     for note in notes:
         log(f"Restarting timer for: Name: {note['name']} Sched: {note['sched']}")
@@ -108,7 +108,12 @@ def show_notes():
     log("Reading notes from mongo")
 
     for note in notes:
-        log(f"Name: {note['name']} Sched: {note['sched']} Displayed: {note['displayed']} {note['note']}")
+        status = f"Displayed: {note['note']}"
+
+        if not note['displayed']:
+            status = f"NOT displayed: {note['note']}"
+
+        log(f"Name: {note['name']} Sched: {note['sched']} {status}")
 
 
 
