@@ -106,6 +106,7 @@ def show_notes():
 
     log("Reading notes from MongoDB")
 
+    # Show each note from the database
     for note in notes:
         status = f"Displayed: {note['note']}"
 
@@ -186,6 +187,11 @@ def retrieve_note_and_show(name):
         
         # Use update_one with the upsert option
         collection.update_one(filter, update)
+
+        # Remove it from the timers array
+        if name in timers:
+            timers[name].cancel()
+            del timers[name]
     else:
         log(f"ERROR: {name} was not found in MongoDB")
 
