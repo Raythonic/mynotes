@@ -63,6 +63,7 @@ else:
 def catchup():
     notes = collection.find({"displayed": False})
 
+    # Each note not displayed yet, schedule it for the time remaining
     for note in notes:
         log(f"Restarting timer for: Name: {note['name']} Sched: {note['sched']}")
         schedule_note(note['name'], note['sched'])
@@ -103,7 +104,7 @@ def cancel_note(name):
 def show_notes():
     notes = collection.find()
 
-    log("Reading notes from mongo")
+    log("Reading notes from MongoDB")
 
     for note in notes:
         status = f"Displayed: {note['note']}"
@@ -243,7 +244,10 @@ def is_valid_filename(filename):
 # Execute user's command from mynotes/command file
 #################################################################################
 def process_command(command):
+
     log(f"Command:{command}")
+
+    # Determine the command and execute it
     if command == "show":
         show_notes()
     
