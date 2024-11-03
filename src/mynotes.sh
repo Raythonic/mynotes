@@ -107,14 +107,12 @@ cancel_note ()
 {
     local name="$1"
 
-    if [ $(echo "$name" | grep -c -E "^[0-9]+$") -gt 0 ]
+    if [ $(echo "$name" | grep -c -E "^[0-9]+$") -gt 0 ] || [ "$name" == "all" ]
     then 
         echo "cancel:$name" > $mydir/command
         echo "See output in $HOME/logs/mynotes.log"
     else
-        echo "$name is not a proper numercial name,"
-        echo "assigned when the note was submitted via:"
-        echo "        mynotes note"
+        echo "ERROR: $name is not a proper name"
     fi
 }
 

@@ -240,6 +240,7 @@ def is_valid_filename(filename):
     return bool(re.match(pattern, filename))
 
 
+
 #################################################################################
 # Execute user's command from mynotes/command file
 #################################################################################
@@ -253,7 +254,16 @@ def process_command(command):
     
     if command.startswith("cancel:"):
         name = f"note{command.split(":")[1]}"
-        cancel_note(name)
+
+        if name != "noteall":
+            cancel_note(name)
+        else:
+            notes = collection.find({"displayed": False})
+
+            # Each note not displayed yet, schedule it for the time remaining
+            for note in notes:
+                cancel_note(note['name'])
+
 
 
 #################################################################################
