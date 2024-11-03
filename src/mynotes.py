@@ -140,6 +140,7 @@ def save_note_to_db(name, sched, note):
     log(f"Note inserted as '{name}' with timer set for {sched}")
 
 
+
 #################################################################################
 # Post the note to the Post its folder for the desktop
 #################################################################################
@@ -160,6 +161,7 @@ def post_note(name, sched, note):
     with open(file_path, 'w') as postit_file:
         postit_file.write(f"{sched} {note}")
     
+
 
 #################################################################################
 # Read a note from the database and notify KDE
@@ -196,6 +198,7 @@ def retrieve_note_and_show(name):
         log(f"ERROR: {name} was not found in MongoDB")
 
 
+
 #################################################################################
 # Schedule a note and start its timer
 #################################################################################
@@ -220,6 +223,7 @@ def schedule_note(name, sched):
         retrieve_note_and_show(name)
 
 
+
 #################################################################################
 # Check the date format
 #################################################################################
@@ -231,6 +235,7 @@ def is_valid_date(date_string, date_format="%Y-%m-%d %H:%M:%S"):
     except ValueError:
         # If parsing fails, return False
         return False
+
 
 
 #################################################################################
@@ -286,7 +291,7 @@ def main():
     mynotes_dir = sys.argv[1]
 
     log("mynotes server started.")
-    caught_up = False
+    caught_up       = False
     wait_msg_issued = False
 
     # Run the scheduler continuously
