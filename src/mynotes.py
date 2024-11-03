@@ -63,8 +63,6 @@ else:
 def catchup():
     notes = collection.find({"displayed": False})
 
-    log("Looking for notes from mongodb that have not been yet displayed...")
-
     for note in notes:
         log(f"Restarting timer for: Name: {note['name']} Sched: {note['sched']}")
         schedule_note(note['name'], note['sched'])
