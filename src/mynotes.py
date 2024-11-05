@@ -177,7 +177,7 @@ def retrieve_note_and_show(name):
 
     if result:
         os.environ["DISPLAY"] = ":0"
-        subprocess.Popen(["notify-send", "--expire-time=0", "From mynotes server", result["note"]])
+        subprocess.Popen(["notify-send", "--expire-time=0", "My Notes", result["note"]])
         post_note(result['name'], result['sched'], result['note'])
 
         # Mark note as displayed
