@@ -14,6 +14,7 @@ declare log="$HOME/logs/mynotes.log"
 
 export MYNOTES_RUNNING="/tmp/.mynotes.running"
 export MONGODB="mongodb://localhost:27017/"
+export GOOGLE_CREDENTIALS="$HOME/sensitive/google-api-credentials.json"
 
 # Initalize .settings is the is a first run
 if [ ! -d $HOME/mynotes ]
@@ -68,7 +69,8 @@ start_server ()
     then
         touch $MYNOTES_RUNNING
         $HOME/bin/mynotes.py $mydir >> $log &
-        echo "mynotes server started"
+        $HOME/bin/google-calendar.py $mydir >> $log &
+        echo "mynotes server and google monitoring started"
     else
         echo "mynotes server is already running"
     fi
@@ -83,7 +85,7 @@ stop_server ()
     if [ -f $MYNOTES_RUNNING ]
     then
         rm $MYNOTES_RUNNING
-        echo "mynotes server stopped"
+        echo "mynotes server and google monitoring stopped"
     else
         echo "mynotes server not running"
     fi
