@@ -69,7 +69,7 @@ start_server ()
     then
         touch $MYNOTES_RUNNING
         $HOME/bin/mynotes.py $mydir >> $log &
-        $HOME/bin/google-calendar.py $mydir >> $log &
+        start_google_polling
         echo "mynotes server and google monitoring started"
     else
         echo "mynotes server is already running"
@@ -88,6 +88,20 @@ stop_server ()
         echo "mynotes server and google monitoring stopped"
     else
         echo "mynotes server not running"
+    fi
+}
+
+
+#######################################################################################################################
+# Start google polling
+#######################################################################################################################
+start_google_polling ()
+{
+    if [ -z $GOOGLE_POLLING ]
+    then
+        $HOME/bin/google-calendar.py >> $log &
+    else
+        echo "google polling already running"
     fi
 }
 
@@ -167,6 +181,10 @@ schedule_note ()
 case "$option" in
     "start")
         start_server
+        ;;
+    
+    "start-google")
+        start_google_polling
         ;;
     
     "stop")
