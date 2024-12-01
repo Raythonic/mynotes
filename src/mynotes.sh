@@ -67,10 +67,14 @@ start_server ()
 {
     if [ ! -f $MYNOTES_RUNNING ]
     then
-        touch $MYNOTES_RUNNING
-        $HOME/bin/mynotes.py $mydir >> $log &
-        start_google_polling
-        echo "mynotes server and google monitoring started"
+        # Spawn the process and capture its PID immediately
+        (
+            echo $$ > $MYNOTES_RUNNING # Write PID of this subshell
+            chown rwalk:rwalk $MYNOTES_RUNNING
+            /home/rwalk/bin/mynotes.py "$mydir" >> "$log"
+        ) &
+        #start_google_polling
+        echo "mynotes server started"
     else
         echo "mynotes server is already running"
     fi
@@ -203,6 +207,15 @@ case "$option" in
             echo "mynotes server is running"
         else
             echo "mynotes server is not running"
+        fi
+        ;;
+
+    "check")
+        if [ -f $MYNOTES_RUNNING ]
+        then 
+            echo 1
+        else
+            echo 0
         fi
         ;;
 

@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 
 import time
 import os
@@ -42,6 +42,8 @@ def poll_google():
         # Retrieve the list of events
         events_result = service.events().list(calendarId='primary').execute()
         events = events_result.get('items', [])
+
+        #log(f"FROM GOOGLE: {events}")
 
         # Create a new dictionary to hold current events
         current_events = {}
