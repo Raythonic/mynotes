@@ -73,7 +73,7 @@ def cancel_note(name):
         log(f"Timer for {name} cancelled")
 
     else:
-        log(f"ERROR: No timer found for {name}")
+        log(f"[ERROR] No timer found for {name}")
 
     # Use update_one with the upsert option
     result = collection.delete_one({"name": name})
@@ -198,7 +198,7 @@ def retrieve_note_and_show(name):
             timers[name].cancel()
             del timers[name]
     else:
-        log(f"ERROR: {name} was not found in MongoDB")
+        log(f"[ERROR] {name} was not found in MongoDB")
 
 
 
@@ -288,7 +288,7 @@ def process_command(command):
                 cancel_note(note['name'])
         return
     
-    log(f"ERROR: Command {command} not recognized")
+    log(f"[ERROR] Command {command} not recognized")
 
 
 #################################################################################
@@ -314,7 +314,7 @@ def main():
     # Parse arguments
     mynotes_dir = sys.argv[1]
 
-    log("mynotes server started")
+    log("######## MyNotes server started ########")
     caught_up       = False
     wait_msg_issued = False
 
@@ -364,7 +364,7 @@ def main():
                                 save_note_to_db(name, sched, note)
                                 schedule_note(name, sched)
                             else:
-                                log(f"ERROR: {sched} is not a valid date and time")
+                                log(f"[ERROR] {sched} is not a valid date and time")
 
                         log(f"Removing {file_path}")
                         os.remove(file_path)
@@ -378,7 +378,7 @@ def main():
     
     
     stop_timers()
-    log("mynotes server shutting down")
+    log("######## MyNotes server shutting down ########")
 
 
 #################################################################################
@@ -396,7 +396,7 @@ if client:
     db = client["mynotes"]
     collection = db["notes"]
 else:
-    log("ERROR: Failed to connect to MongoDB")
+    log("[ERROR] Failed to connect to MongoDB")
     get_out(1)
 
 

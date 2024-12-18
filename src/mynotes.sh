@@ -71,10 +71,10 @@ start_server ()
         (
             echo $$ > $MYNOTES_RUNNING # Write PID of this subshell
             chown rwalk:rwalk $MYNOTES_RUNNING
-            /home/rwalk/bin/mynotes.py "$mydir" >> "$log"
+            /home/rwalk/services/mynotes.py "$mydir" >> "$log"
         ) &
         #start_google_polling
-        echo "mynotes server started"
+        echo "MyNotes server started"
     else
         echo "mynotes server is already running"
     fi
@@ -89,7 +89,7 @@ stop_server ()
     if [ -f $MYNOTES_RUNNING ]
     then
         rm $MYNOTES_RUNNING
-        echo "mynotes server and google monitoring stopped"
+        echo "MyNotes server and google monitoring stopped"
     else
         echo "mynotes server not running"
     fi
@@ -103,7 +103,7 @@ start_google_polling ()
 {
     if [ -z $GOOGLE_POLLING ]
     then
-        $HOME/bin/google-calendar.py >> $log &
+        $HOME/services/google-calendar.py >> $log &
     else
         echo "google polling already running"
     fi
@@ -132,7 +132,7 @@ cancel_note ()
         echo "cancel:$name" > $mydir/command
         echo "See output in $HOME/logs/mynotes.log"
     else
-        echo "ERROR: $name is not a proper name"
+        echo "[ERROR] $name is not a proper name"
     fi
 }
 
@@ -173,7 +173,7 @@ schedule_note ()
         # Schedule work for the mynotes server
         printf "%s %s" "$clean_sched" "$text" > "$mydir/$file_name"
     else
-        echo "ERROR: $sched is not in form yyyy-mm-dd hh:mm:ss or hh:mm:ss"
+        echo "[ERROR] $sched is not in form yyyy-mm-dd hh:mm:ss or hh:mm:ss"
     fi
 }
 
@@ -236,7 +236,7 @@ case "$option" in
         then
             schedule_note "$1" "$2"
         else
-            echo "ERROR: mynotes server not running"
+            echo "[ERROR] mynotes server not running"
         fi
         ;;
 esac
