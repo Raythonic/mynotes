@@ -1,7 +1,8 @@
 #!/bin/bash
+source /home/rwalk/bin/bash_ext > /dev/null
 
 # Update this app's version number in the mongodb database
-/home/rwalk/bin/update-myconfig.sh "MyNotes" "version" "{BUILD-VERSION}"
+increment_app_version "MyNotes"
 
 cp src/mynotes.py $HOME/services/.
 cp src/mynotes.sh $HOME/services/mynotes
