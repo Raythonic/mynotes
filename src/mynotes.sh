@@ -72,15 +72,15 @@ start_server ()
         (
             echo $$ > $MYNOTES_RUNNING # Write PID of this subshell
             chown rwalk:rwalk $MYNOTES_RUNNING
-            open_log "$app_name" > /dev/null
+            open_log "$app_name"
 
             /home/rwalk/services/mynotes.py "$mydir" >> $log
         ) &
 
         #start_google_polling
-        echo "MyNotes server started"
+        echo "$app_name server started"
     else
-        echo "mynotes server is already running"
+        echo "$app_name server is already running"
     fi
 }
 
