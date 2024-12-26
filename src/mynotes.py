@@ -22,17 +22,26 @@ from datetime import datetime
 from dateutil import parser
 import subprocess
 import re
+from pymongo import MongoClient
 
 timers          = {}
 server_running  = os.environ['MYNOTES_RUNNING']
+MONGO_URI       = os.environ.get('MONGODB')
+MONGO_DB           = "personal"
+MONGO_COLLECTION   = "mynotes"
+
+client              = MongoClient(MONGO_URI)
+db                  = client[MONGO_DB]
+collection          = db[MONGO_COLLECTION]
 
 #################################################################################
 # Timestamp a message
 #################################################################################
 def log(text):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{current_time} {text}", flush=True)
+    print(f"{text}")
 
+    #current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #print(f"{current_time} {text}", flush=True)
 
 
 #################################################################################
@@ -314,7 +323,6 @@ def main():
     # Parse arguments
     mynotes_dir = sys.argv[1]
 
-    log("######## MyNotes server started ########")
     caught_up       = False
     wait_msg_issued = False
 

@@ -9,11 +9,12 @@
 
 [ -z "$1" ] && echo "Usage: mynotes [start|stop|text]" && exit 0
 
+source /home/rwalk/bin/bash_ext > /dev/null
 declare mydir="$HOME/mynotes"
-declare log="$HOME/logs/mynotes.log"
+declare app_name="MyNotes"
+declare log=$(get_myconfig "$app_name" "log_file")
 
 export MYNOTES_RUNNING="/tmp/.mynotes.running"
-export MONGODB="mongodb://localhost:27017/"
 export GOOGLE_CREDENTIALS="$HOME/sensitive/google-api-credentials.json"
 
 # Initalize .settings is the is a first run
@@ -71,8 +72,14 @@ start_server ()
         (
             echo $$ > $MYNOTES_RUNNING # Write PID of this subshell
             chown rwalk:rwalk $MYNOTES_RUNNING
-            /home/rwalk/services/mynotes.py "$mydir" >> "$log"
+            open_log "$app_name" > /dev/null
+
+            /home/rwalk/services/mynotes.py "$mydir" | while read -r line
+                do
+                    ts_log "$line" >> "$log"
+                done
         ) &
+
         #start_google_polling
         echo "MyNotes server started"
     else
@@ -88,6 +95,7 @@ stop_server ()
 {
     if [ -f $MYNOTES_RUNNING ]
     then
+        close_log "$app_name"
         rm $MYNOTES_RUNNING
         echo "MyNotes server and google monitoring stopped"
     else
@@ -116,7 +124,7 @@ start_google_polling ()
 show_notes ()
 {
     echo "show" > $mydir/command
-    echo "See output in $HOME/logs/mynotes.log"
+    echo "See output in $log"
 }
 
 
@@ -130,7 +138,7 @@ cancel_note ()
     if [ $(echo "$name" | grep -c -E "^[0-9]+$") -gt 0 ] || [ "$name" == "all" ]
     then 
         echo "cancel:$name" > $mydir/command
-        echo "See output in $HOME/logs/mynotes.log"
+        echo "See output in $log"
     else
         echo "[ERROR] $name is not a proper name"
     fi
@@ -142,7 +150,7 @@ cancel_note ()
 purge_database ()
 {
     echo "purge" > $mydir/command
-    echo "See output in $HOME/logs/mynotes.log"
+    echo "See output in $log"
 }
 
 #######################################################################################################################
