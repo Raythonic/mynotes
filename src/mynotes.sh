@@ -74,10 +74,7 @@ start_server ()
             chown rwalk:rwalk $MYNOTES_RUNNING
             open_log "$app_name" > /dev/null
 
-            /home/rwalk/services/mynotes.py "$mydir" | while read -r line
-                do
-                    ts_log "$line" >> "$log"
-                done
+            /home/rwalk/services/mynotes.py "$mydir" >> $log
         ) &
 
         #start_google_polling

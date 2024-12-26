@@ -26,7 +26,7 @@ from pymongo import MongoClient
 
 timers          = {}
 server_running  = os.environ['MYNOTES_RUNNING']
-MONGO_URI       = os.environ.get('MONGODB')
+MONGO_URI       = os.environ['MONGODB']
 MONGO_DB           = "personal"
 MONGO_COLLECTION   = "mynotes"
 
@@ -38,10 +38,8 @@ collection          = db[MONGO_COLLECTION]
 # Timestamp a message
 #################################################################################
 def log(text):
-    print(f"{text}")
-
-    #current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    #print(f"{current_time} {text}", flush=True)
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{current_time} [{sys.argv[0]}] {text}", flush=True)
 
 
 #################################################################################
@@ -386,7 +384,6 @@ def main():
     
     
     stop_timers()
-    log("######## MyNotes server shutting down ########")
 
 
 #################################################################################
