@@ -1,8 +1,9 @@
 #!/bin/bash
 source /home/rwalk/bin/bash_ext > /dev/null
+app_name="MyNotes"
 
 # Update this app's version number in the mongodb database
-load_project_config "MyNotes"
+load_project_config "$app_name"
 
 cp src/mynotes.py $HOME/services/.
 cp src/mynotes.sh $HOME/services/mynotes
@@ -16,3 +17,5 @@ chmod +x $HOME/services/mynotes
 # Place command in bin/
 rm $HOME/bin/mynotes
 ln -s $HOME/services/mynotes $HOME/bin/mynotes 
+
+publish "$app_name"
