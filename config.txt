@@ -1,2 +1,5 @@
 log_file="/home/rwalk/logs/mynotes.log"
 restart="/home/rwalk/bin/mynotes restart > /dev/null"
+start="/home/rwalk/bin/mynotes start > /dev/null"
+stop="/home/rwalk/bin/mynotes stop > /dev/null"
+status="/home/rwalk/bin/mynotes status"
