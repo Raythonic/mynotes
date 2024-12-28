@@ -72,7 +72,12 @@ start_server ()
         (
             echo $$ > $MYNOTES_RUNNING # Write PID of this subshell
             chown rwalk:rwalk $MYNOTES_RUNNING
-            open_log "$app_name"
+            local log=$(get_myconfig "$app_name" "log_file")
+            local version=$(get_version "$app_name")
+            local dat=$(date +"%Y-%m-%d %H:%M:%S")
+            local path=$(realpath "$0")
+
+            echo "$dat [$path] ######## $app_name $version ########" >> $log
 
             /home/rwalk/services/mynotes.py "$mydir" >> $log
         ) &
@@ -92,8 +97,13 @@ stop_server ()
 {
     if [ -f $MYNOTES_RUNNING ]
     then
-        close_log "$app_name"
         rm $MYNOTES_RUNNING
+        local log=$(get_myconfig "$app_name" "log_file")
+        local dat=$(date +"%Y-%m-%d %H:%M:%S")
+        local path=$(realpath "$0")
+
+        echo "$dat [$path] ######## $app_name ENDED ########" >> $log
+
         echo "MyNotes server and google monitoring stopped"
     else
         echo "mynotes server not running"

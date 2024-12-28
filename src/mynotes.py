@@ -38,8 +38,13 @@ collection          = db[MONGO_COLLECTION]
 # Timestamp a message
 #################################################################################
 def log(text):
+    msg=text
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{current_time} [{sys.argv[0]}] {text}", flush=True)
+    
+    if "[ERROR]" not in msg and "[WARNING]" not in msg:
+        msg = f"[INFO] {msg}"
+    
+    print(f"{current_time} [{sys.argv[0]}] {msg}", flush=True)
 
 
 #################################################################################
