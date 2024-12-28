@@ -16,5 +16,3 @@ rm $HOME/bin/mynotes
 ln -s $HOME/services/mynotes $HOME/bin/mynotes 
 
 publish "$app_name"
-
-$HOME/bin/mynotes restart > /dev/null

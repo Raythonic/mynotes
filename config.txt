@@ -1,1 +1,2 @@
 log_file="/home/rwalk/logs/mynotes.log"
+restart="/home/rwalk/bin/mynotes restart > /dev/null"
