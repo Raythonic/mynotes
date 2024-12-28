@@ -76,8 +76,9 @@ start_server ()
             local version=$(get_version "$app_name")
             local dat=$(date +"%Y-%m-%d %H:%M:%S")
             local path=$(realpath "$0")
+            local header=$(form_header "$app_name" "$version")
 
-            echo "$dat [$path] ######## $app_name $version ########" >> $log
+            echo "$header"  >> $log
 
             /home/rwalk/services/mynotes.py "$mydir" >> $log
         ) &
@@ -101,8 +102,10 @@ stop_server ()
         local log=$(get_myconfig "$app_name" "log_file")
         local dat=$(date +"%Y-%m-%d %H:%M:%S")
         local path=$(realpath "$0")
+        local trailer=$(form_trailer "$app_name" "$version")
 
-        echo "$dat [$path] ######## $app_name ENDED ########" >> $log
+        echo "$trailer"  >> $log
+
 
         echo "MyNotes server and google monitoring stopped"
     else
