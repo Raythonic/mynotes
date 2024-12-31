@@ -12,7 +12,8 @@
 source /home/rwalk/bin/bash_ext > /dev/null
 declare mydir="$HOME/mynotes"
 declare app_name="MyNotes"
-declare log=$(get_myconfig "$app_name" "log_file")
+
+export_myconfig $app_name
 
 export MYNOTES_RUNNING="/tmp/.mynotes.running"
 export GOOGLE_CREDENTIALS="$HOME/sensitive/google-api-credentials.json"
@@ -78,9 +79,9 @@ start_server ()
             local path=$(realpath "$0")
             local header=$(form_header "$app_name" "$version")
 
-            echo "$header"  >> $log
+            echo "$header"  >> $log_file
 
-            /home/rwalk/services/mynotes.py "$mydir" >> $log
+            /home/rwalk/services/mynotes.py "$mydir" >> $log_file
         ) &
 
         #start_google_polling
@@ -104,7 +105,7 @@ stop_server ()
         local path=$(realpath "$0")
         local trailer=$(form_trailer "$app_name" "$version")
 
-        echo "$trailer"  >> $log
+        echo "$trailer"  >> $log_file
 
 
         echo "MyNotes server and google monitoring stopped"
@@ -121,7 +122,7 @@ start_google_polling ()
 {
     if [ -z $GOOGLE_POLLING ]
     then
-        $HOME/services/google-calendar.py >> $log &
+        $HOME/services/google-calendar.py >> $log_file &
     else
         echo "google polling already running"
     fi
@@ -134,7 +135,7 @@ start_google_polling ()
 show_notes ()
 {
     echo "show" > $mydir/command
-    echo "See output in $log"
+    echo "See output in $log_file"
 }
 
 
@@ -148,7 +149,7 @@ cancel_note ()
     if [ $(echo "$name" | grep -c -E "^[0-9]+$") -gt 0 ] || [ "$name" == "all" ]
     then 
         echo "cancel:$name" > $mydir/command
-        echo "See output in $log"
+        echo "See output in $log_file"
     else
         echo "[ERROR] $name is not a proper name"
     fi
@@ -160,7 +161,7 @@ cancel_note ()
 purge_database ()
 {
     echo "purge" > $mydir/command
-    echo "See output in $log"
+    echo "See output in $log_file"
 }
 
 #######################################################################################################################
