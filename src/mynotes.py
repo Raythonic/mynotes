@@ -34,17 +34,35 @@ client              = MongoClient(MONGO_URI)
 db                  = client[MONGO_DB]
 collection          = db[MONGO_COLLECTION]
 
+# Check if arguments are provided
+if len(sys.argv) < 3:
+    print("Usage: mynotes.py 'mynotes_dir' 'log_file'")
+    sys.exit(0)
+
+# Get arguments
+mynotes_dir = sys.argv[1]
+log_file = sys.argv[2]
+
 #################################################################################
 # Timestamp a message
 #################################################################################
-def log(text):
-    msg=text
+def log(text, printit=False):
+    global mynotes_dir, log_file
+
+    msg = text
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     if "[ERROR]" not in msg and "[WARNING]" not in msg:
         msg = f"[INFO] {msg}"
-    
-    print(f"{current_time} [{sys.argv[0]}] {msg}", flush=True)
+
+    log_message = f"{current_time} [{mynotes_dir}] {msg}\n"
+
+    with open(log_file, 'a') as f:
+        f.write(log_message)
+
+    # If also asked to print it
+    if printit:
+        print(text)
 
 
 #################################################################################
@@ -67,7 +85,6 @@ def catchup():
         schedule_note(note['name'], note['sched'])
 
 
-
 #################################################################################
 # Cancel a note's schedule
 #################################################################################
@@ -82,41 +99,46 @@ def cancel_note(name):
         # Remove the timer object
         del timers[name]
 
-        log(f"Timer for {name} cancelled")
+        log(f"Timer for {name} cancelled", printit=True)
 
     else:
-        log(f"[ERROR] No timer found for {name}")
+        log(f"[ERROR] No timer found for {name}", printit=True)
 
     # Use update_one with the upsert option
     result = collection.delete_one({"name": name})
     
     # If note was found...
     if result.deleted_count > 0:
-        log(f"Note '{name}' deleted from database")
-
+        log(f"Note '{name}' deleted from database", printit=True)
 
 
 #################################################################################
 # Show all notes from the database 
 #################################################################################
 def show_notes():
-    notes = collection.find()
+    notes = list(collection.find({"displayed": False}))
 
-    log("Reading notes from MongoDB")
+    log(f"Reading {len(notes)} notes from MongoDB")
+
+    print("")
 
     # Show each note from the database
     for note in notes:
+        output = f"{note['name']}: {note['note']} scheduled: {note['sched']}"
+        log(output, printit=True)
 
-        if note['displayed']:
-            if note['sched'] == "1970-01-01 00:00:00":
-                status = "was displayed immediately"
-            else:
-                status = f"was displayed at {note['sched']}"
-        else:
-            status = f"will be displayed at {note['sched']}"
 
-        log(f"{note['name']} {status} =>  \"{note['note']}\"")
+#################################################################################
+# Dump all notes from the database 
+#################################################################################
+def dump_notes():
+    notes = collection.find({})
 
+    log("Dumping notes from MongoDB")
+
+    # Show each note from the database
+    for note in notes:
+        log(f"{note['name']}: {note['note']} scheduled: {note['sched']} {note['displayed']}", printit=True)
 
 
 #################################################################################
@@ -128,8 +150,8 @@ def purge_database():
     stop_timers()
 
     collection.delete_many({})
-    log("MongoDB database purged")
-
+    msg = "MongoDB database purged"
+    log(msg, printit=True)
 
 
 #################################################################################
@@ -157,28 +179,6 @@ def save_note_to_db(name, sched, note):
 
 
 #################################################################################
-# Post the note to the Post its folder for the desktop
-#################################################################################
-def post_note(name, sched, note):
-
-    filename = name.replace(":", "")
-
-    # Define the directory where notes will be stored
-    postits_dir = os.path.expanduser('~/PostIts')
-
-    # Create the directory if it doesn't exist
-    os.makedirs(postits_dir, exist_ok=True)
-
-    # Construct the file path
-    file_path = os.path.join(postits_dir, f"{filename}.txt")
-
-    # Write the note to the file
-    with open(file_path, 'w') as postit_file:
-        postit_file.write(f"{sched} {note}")
-    
-
-
-#################################################################################
 # Read a note from the database and notify KDE
 #################################################################################
 def retrieve_note_and_show(name):
@@ -190,7 +190,6 @@ def retrieve_note_and_show(name):
     if result:
         os.environ["DISPLAY"] = ":0"
         subprocess.Popen(["notify-send", "--expire-time=0", "My Notes", result["note"]])
-        post_note(result['name'], result['sched'], result['note'])
 
         # Mark note as displayed
         filter = {"name": name}
@@ -287,11 +286,10 @@ def process_command(command):
     
     # Cancel a note's schedule
     if command.startswith("cancel:"):
-        note_num = command.split(":")[1]
-        name = f"note{note_num}"
+        note = command.split(":")[1]
 
-        if note_num != "all":
-            cancel_note(name)
+        if note != "all":
+            cancel_note(note)
         else:
             notes = collection.find({"displayed": False})
 
@@ -317,15 +315,6 @@ def stop_timers():
 #                               MAIN LOGIC                                      #
 #################################################################################
 def main():
-
-    # Check if arguments are provided
-    if len(sys.argv) < 2:
-        log("Usage: mynotes.py 'mynotes_dir'")
-        get_out(0)
-
-    # Parse arguments
-    mynotes_dir = sys.argv[1]
-
     caught_up       = False
     wait_msg_issued = False
 

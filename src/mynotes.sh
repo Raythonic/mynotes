@@ -13,6 +13,7 @@ source /home/rwalk/bin/bash_ext > /dev/null
 declare mydir="$HOME/mynotes"
 declare app_name="MyNotes"
 
+# Load this app's config parameters into env variables
 export_myconfig $app_name
 
 export MYNOTES_RUNNING="/tmp/.mynotes.running"
@@ -73,7 +74,6 @@ start_server ()
         (
             echo $$ > $MYNOTES_RUNNING # Write PID of this subshell
             chown rwalk:rwalk $MYNOTES_RUNNING
-            local log=$(get_myconfig "$app_name" "log_file")
             local version=$(get_version "$app_name")
             local dat=$(date +"%Y-%m-%d %H:%M:%S")
             local path=$(realpath "$0")
@@ -81,7 +81,7 @@ start_server ()
 
             echo "$header"  >> $log_file
 
-            /home/rwalk/services/mynotes.py "$mydir" >> $log_file
+            /home/rwalk/services/mynotes.py "$mydir" "$log_file"
         ) &
 
         #start_google_polling
@@ -100,13 +100,11 @@ stop_server ()
     if [ -f $MYNOTES_RUNNING ]
     then
         rm $MYNOTES_RUNNING
-        local log=$(get_myconfig "$app_name" "log_file")
         local dat=$(date +"%Y-%m-%d %H:%M:%S")
         local path=$(realpath "$0")
         local trailer=$(form_trailer "$app_name" "$version")
 
         echo "$trailer"  >> $log_file
-
 
         echo "MyNotes server and google monitoring stopped"
     else
@@ -135,9 +133,15 @@ start_google_polling ()
 show_notes ()
 {
     echo "show" > $mydir/command
-    echo "See output in $log_file"
 }
 
+#######################################################################################################################
+# Dump the notes database
+#######################################################################################################################
+dump_notes ()
+{
+    echo "dump" > $mydir/command
+}
 
 #######################################################################################################################
 # Cancel the timers of a note
@@ -146,13 +150,7 @@ cancel_note ()
 {
     local name="$1"
 
-    if [ $(echo "$name" | grep -c -E "^[0-9]+$") -gt 0 ] || [ "$name" == "all" ]
-    then 
-        echo "cancel:$name" > $mydir/command
-        echo "See output in $log_file"
-    else
-        echo "[ERROR] $name is not a proper name"
-    fi
+    echo "cancel:$name" > $mydir/command
 }
 
 #######################################################################################################################
@@ -161,7 +159,6 @@ cancel_note ()
 purge_database ()
 {
     echo "purge" > $mydir/command
-    echo "See output in $log_file"
 }
 
 #######################################################################################################################
