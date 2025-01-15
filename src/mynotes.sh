@@ -239,7 +239,7 @@ case "$option" in
         show_notes
         ;;
 
-    "cancel" || "delete")
+    "cancel" | "delete")
         cancel_note "$2"
         ;;
 
