@@ -313,6 +313,8 @@ def stop_timers():
 #                               MAIN LOGIC                                      #
 #################################################################################
 def main():
+    global mynotes_dir
+    
     caught_up       = False
     wait_msg_issued = False
 
