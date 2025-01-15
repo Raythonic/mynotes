@@ -176,8 +176,6 @@ def save_note_to_db(name, sched, note):
     
     log(f"Note saved as '{name}' with timer set for {sched}")
 
-
-
 #################################################################################
 # Read a note from the database and notify KDE
 #################################################################################
