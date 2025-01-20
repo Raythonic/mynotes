@@ -9,6 +9,12 @@
 
 [ -z "$1" ] && echo "Usage: mynotes [start|stop|text]" && exit 0
 
+# For crontab invocations
+if [ -z "$DISPLAY" ]
+then
+    export DISPLAY=:0
+fi
+
 source /home/rwalk/bin/bash_ext > /dev/null
 declare mydir="$HOME/mynotes"
 declare app_name="MyNotes"
@@ -126,6 +132,14 @@ start_google_polling ()
     fi
 }
 
+#######################################################################################################################
+# Reconnect to MongoDB database
+#######################################################################################################################
+reconnect ()
+{
+    echo "reconnect" > $mydir/command
+}
+
 
 #######################################################################################################################
 # Dump the notes database
@@ -149,6 +163,11 @@ dump_notes ()
 cancel_note ()
 {
     local name="$1"
+
+    if echo "$name" | grep -q "^[0-9]"
+    then
+        name="note${name}"
+    fi
 
     echo "cancel:$name" > $mydir/command
 }
@@ -215,6 +234,10 @@ case "$option" in
         stop_server
         sleep 3
         start_server
+        ;;
+
+    "reconnect")
+        reconnect
         ;;
 
     "status")

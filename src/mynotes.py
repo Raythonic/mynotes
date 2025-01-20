@@ -23,10 +23,12 @@ from dateutil import parser
 import subprocess
 import re
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError, AutoReconnect
 
-timers          = {}
-server_running  = os.environ['MYNOTES_RUNNING']
-MONGO_URI       = os.environ['MONGODB']
+timers              = {}
+server_running      = os.environ['MYNOTES_RUNNING']
+wait_time           = 1
+MONGO_URI           = os.environ['MONGODB']
 MONGO_DB           = "personal"
 MONGO_COLLECTION   = "mynotes"
 
@@ -86,6 +88,19 @@ def catchup():
 
 
 #################################################################################
+# Reconnect to MongoDB database
+#################################################################################
+def reconnect():
+    global client, db, collection
+
+    client              = MongoClient(MONGO_URI)
+    db                  = client[MONGO_DB]
+    collection          = db[MONGO_COLLECTION]
+
+    log(f"Reconnected to MongoDB")
+
+
+#################################################################################
 # Cancel a note's schedule
 #################################################################################
 def cancel_note(name):
@@ -116,29 +131,36 @@ def cancel_note(name):
 # Show all notes from the database 
 #################################################################################
 def show_notes():
-    notes = list(collection.find({"displayed": False}))
+    try:
+        notes = list(collection.find({"displayed": False}))
 
-    log(f"Reading {len(notes)} notes from MongoDB")
+        log(f"Reading {len(notes)} notes from MongoDB")
 
-    print("")
+        print("")
 
-    # Show each note from the database
-    for note in notes:
-        output = f"{note['name']}: {note['note']} scheduled: {note['sched']}"
-        log(output, printit=True)
+        # Show each note from the database
+        for note in notes:
+            output = f"{note['name']}: {note['note']} scheduled: {note['sched']}"
+            log(output, printit=True)
 
+    except:
+        log(f"MongoDB find failed")
 
 #################################################################################
 # Dump all notes from the database 
 #################################################################################
 def dump_notes():
-    notes = collection.find({})
+    try:
+        notes = collection.find({})
 
-    log("Dumping notes from MongoDB")
+        log("Dumping notes from MongoDB")
 
-    # Show each note from the database
-    for note in notes:
-        log(f"{note['name']}: {note['note']} scheduled: {note['sched']} {note['displayed']}", printit=True)
+        # Show each note from the database
+        for note in notes:
+            log(f"{note['name']}: {note['note']} scheduled: {note['sched']} {note['displayed']}", printit=True)
+    
+    except:
+        log(f"MongoDB find failed")
 
 
 #################################################################################
@@ -146,12 +168,15 @@ def dump_notes():
 #################################################################################
 def purge_database():
 
-    # Cancel all timers first
-    stop_timers()
-
-    collection.delete_many({})
-    msg = "MongoDB database purged"
-    log(msg, printit=True)
+    try:
+        collection.delete_many({})
+        msg = "MongoDB database purged"
+        log(msg, printit=True)
+        
+        # Cancel all timers first
+        stop_timers()
+    except:
+        log(f"MongoDB delete_many failed")
 
 
 #################################################################################
@@ -171,10 +196,14 @@ def save_note_to_db(name, sched, note):
         }
     }
     
-    # Use update_one with the upsert option
-    collection.update_one(filter, update, upsert=True)
+    try:
+        # Use update_one with the upsert option
+        collection.update_one(filter, update, upsert=True)
+        
+        log(f"Note saved as '{name}' with timer set for {sched}")
     
-    log(f"Note saved as '{name}' with timer set for {sched}")
+    except:
+        log(f"MongoDB update_one failed")
 
 #################################################################################
 # Read a note from the database and notify KDE
@@ -183,32 +212,36 @@ def retrieve_note_and_show(name):
      
     log(f"Timer for {name} popped")
 
-    result = collection.find_one({"name": name})
+    try:
 
-    if result:
-        os.environ["DISPLAY"] = ":0"
-        subprocess.Popen(["notify-send", "--expire-time=0", "My Notes", result["note"]])
+        result = collection.find_one({"name": name})
 
-        # Mark note as displayed
-        filter = {"name": name}
-    
-        # Create an update operation
-        update = {
-            "$set": {
-                "displayed": True
-            }
-        }
+        if result:
+            os.environ["DISPLAY"] = ":0"
+            subprocess.Popen(["notify-send", "--expire-time=0", "My Notes", result["note"]])
+
+            # Mark note as displayed
+            filter = {"name": name}
         
-        # Use update_one with the upsert option
-        collection.update_one(filter, update)
+            # Create an update operation
+            update = {
+                "$set": {
+                    "displayed": True
+                }
+            }
+            
+            # Use update_one with the upsert option
+            collection.update_one(filter, update)
 
-        # Remove it from the timers array
-        if name in timers:
-            timers[name].cancel()
-            del timers[name]
-    else:
-        log(f"[ERROR] {name} was not found in MongoDB")
-
+            # Remove it from the timers array
+            if name in timers:
+                timers[name].cancel()
+                del timers[name]
+        else:
+            log(f"[ERROR] {name} was not found in MongoDB")
+    
+    except:
+        log(f"MongoDB failed on retrieve_note_and_show")
 
 
 #################################################################################
@@ -272,6 +305,11 @@ def process_command(command):
 
     # Determine the command and execute it
 
+       # Show all the notes in the database
+    if command == "reconnect":
+        reconnect()
+        return
+
     # Show all the notes in the database
     if command == "show":
         show_notes()
@@ -289,11 +327,14 @@ def process_command(command):
         if note != "all":
             cancel_note(note)
         else:
-            notes = collection.find({"displayed": False})
+            try:
+                notes = collection.find({"displayed": False})
 
-            # Each note not displayed yet, schedule it for the time remaining
-            for note in notes:
-                cancel_note(note['name'])
+                # Each note not displayed yet, schedule it for the time remaining
+                for note in notes:
+                    cancel_note(note['name'])
+            except:
+                log(f"MongoDB find failed")
         return
     
     log(f"[ERROR] Command {command} not recognized")
@@ -310,6 +351,31 @@ def stop_timers():
 
 
 #################################################################################
+# Check MongoDB connection and reconnect if it fails
+#################################################################################
+def check_connection():
+    global wait_time
+
+    try:
+        # Force server communication with a "ping" command
+        collection.database.command("ping")
+
+        # Put polling cycle back to normal
+        wait_time = 1
+
+    except (ServerSelectionTimeoutError, AutoReconnect) as e:
+        log(f"MongoDB connection failed: {str(e)}. Attempting reconnect...")
+
+        # Slow polling cycle down
+        wait_time = 60
+
+        reconnect()
+
+    except Exception as e:
+        log(f"Unexpected error occurred: {str(e)}")
+
+    
+#################################################################################
 #                               MAIN LOGIC                                      #
 #################################################################################
 def main():
@@ -320,6 +386,9 @@ def main():
 
     # Run the scheduler continuously
     while os.path.exists(server_running):
+
+        # Test that MongoDB is still there
+        check_connection()
 
         # Restart timers for undisplayed notes
         if not caught_up:
@@ -374,8 +443,7 @@ def main():
             log("Waiting for work...")
             wait_msg_issued = True
         
-        time.sleep(1)
-    
+        time.sleep(wait_time)
     
     stop_timers()
 
@@ -385,19 +453,6 @@ def main():
 #                               Program start                                   #
 #################################################################################
 #################################################################################
-
-
-# MongoDB setup (assuming MongoDB is running locally on default port 27017)
-client = pymongo.MongoClient(os.environ['MONGODB'])
-
-if client:
-    log("Connected to MongoDB database")
-    db = client["mynotes"]
-    collection = db["notes"]
-else:
-    log("[ERROR] Failed to connect to MongoDB")
-    get_out(1)
-
 
 if __name__ == "__main__":
     main()
