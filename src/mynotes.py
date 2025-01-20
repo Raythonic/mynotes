@@ -366,10 +366,10 @@ def check_connection():
     except (ServerSelectionTimeoutError, AutoReconnect) as e:
         log(f"MongoDB connection failed: {str(e)}. Attempting reconnect...")
 
+        reconnect()
+
         # Slow polling cycle down
         wait_time = 60
-
-        reconnect()
 
     except Exception as e:
         log(f"Unexpected error occurred: {str(e)}")
