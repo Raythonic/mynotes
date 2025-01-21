@@ -1,6 +1,5 @@
 #!/bin/bash
 source /home/rwalk/bin/bash_ext > /dev/null
-app_name="MyNotes"
 
 cp src/mynotes.py $HOME/services/.
 cp src/mynotes.sh $HOME/services/mynotes
@@ -15,4 +14,4 @@ chmod +x $HOME/services/mynotes
 rm $HOME/bin/mynotes
 ln -s $HOME/services/mynotes $HOME/bin/mynotes 
 
-publish "$app_name"
+publish

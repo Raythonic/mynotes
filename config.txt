@@ -1,3 +1,5 @@
+#canonical_name:MyNotes
+
 # Log file
 log_file="/home/rwalk/logs/mynotes.log"
 
