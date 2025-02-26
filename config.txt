@@ -1,4 +1,6 @@
 #canonical_name:MyNotes
+#pushx_src:/home/rwalk/services
+#alias:mynotes.sh mynotes
 
 # Log file
 log_file="/home/rwalk/logs/mynotes.log"
