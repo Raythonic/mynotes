@@ -1,10 +1,13 @@
 #canonical_name:MyNotes
-#pushx_svc:/home/rwalk/services
-#pushx_src:/home/rwalk/bin
+#pushx_svc:${project_target_svc}
+#push_data:${project_target_svc}
+#pushx_bin:${project_target_bin}
+#edit:${project_target_bin}/mynotes.sh EXEC=${project_target_svc}/mynotes.py,GOOGLE=${project_target_svc}/google-calendar.py
+#edit:${project_target_bin}/mynotes.sh 
 #alias:mynotes.sh mynotes
 
 # Log file
-log_file="/home/rwalk/logs/mynotes.log"
+log_file=${project_log}
 
 # Command list
 restart="/home/rwalk/bin/mynotes restart > /dev/null"

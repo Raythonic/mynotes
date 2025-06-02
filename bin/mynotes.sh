@@ -87,7 +87,7 @@ start_server ()
 
             echo "$header"  >> $log_file
 
-            /home/rwalk/services/mynotes.py "$mydir" "$log_file"
+            --EXEC-- "$mydir" "$log_file"
         ) &
 
         #start_google_polling
@@ -126,7 +126,7 @@ start_google_polling ()
 {
     if [ -z $GOOGLE_POLLING ]
     then
-        $HOME/services/google-calendar.py >> $log_file &
+        --GOOGLE-- >> $log_file &
     else
         echo "google polling already running"
     fi
