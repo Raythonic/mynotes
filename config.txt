@@ -9,7 +9,7 @@
 log_file=${project_log}
 
 # Command list
-restart="/home/rwalk/bin/mynotes restart \> /dev/null"
-start="/home/rwalk/bin/mynotes start \> /dev/null"
-stop="/home/rwalk/bin/mynotes stop \> /dev/null"
-status="/home/rwalk/bin/mynotes status"
+restart="${project_target_bin}/mynotes restart \> /dev/null"
+start="${project_target_bin}/mynotes start \> /dev/null"
+stop="${project_target_bin}/mynotes stop \> /dev/null"
+status="${project_target_bin}/mynotes status"
