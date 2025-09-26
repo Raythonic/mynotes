@@ -15,7 +15,7 @@ then
     export DISPLAY=:0
 fi
 
-source /home/rwalk/bin/bash_ext > /dev/null
+source /home/rwalk/bin/mybash > /dev/null
 declare mydir="$HOME/mynotes"
 declare app_name="MyNotes"
 
