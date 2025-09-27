@@ -3,7 +3,7 @@
 #push_data:${project_target_svc}
 #pushx_bin:${project_target_bin}
 #edit:${project_target_bin}/mynotes.sh EXEC=${project_target_svc}/mynotes.py,GOOGLE=${project_target_svc}/google-calendar.py
-#alias:${project_target_bin}/mynotes.sh mynotes
+#short_alias:${project_target_bin}/mynotes.sh
 
 # Log file
 log_file=${project_log}
