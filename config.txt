@@ -1,4 +1,5 @@
 #canonical_name:MyNotes
+#app_type:python_service
 #pushx_svc:${project_target_svc}
 #push_data:${project_target_svc}
 #pushx_bin:${project_target_bin}
