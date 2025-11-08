@@ -1,1 +1,1 @@
-Added app_type to config file
+Removed publisher call on publish.sh because it's done automatically
