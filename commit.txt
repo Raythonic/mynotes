@@ -1,1 +1,1 @@
-Removed publisher call on publish.sh because its done automatically
+Put publisher back in script, and move google-api mod out
