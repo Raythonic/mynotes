@@ -3,7 +3,8 @@
 #pushx_svc:${project_target_svc}
 #push_data:${project_target_svc}
 #pushx_bin:${project_target_bin}
-#alias:${project_target_bin}/mynotes.sh mynotes
+#edit:${project_target_bin}/mynotes.sh EXEC=${project_target_svc}/mynotes.py
+#short_alias:${project_target_bin}/mynotes.sh
 
 # Log file
 log_file=${project_log}
