@@ -23,7 +23,6 @@ declare app_name="MyNotes"
 export_myconfig $app_name
 
 export MYNOTES_RUNNING="/tmp/.mynotes.running"
-export GOOGLE_CREDENTIALS="$HOME/sensitive/google-api-credentials.json"
 
 # Initalize .settings is the is a first run
 if [ ! -d $HOME/mynotes ]
@@ -90,7 +89,6 @@ start_server ()
             --EXEC-- "$mydir" "$log_file"
         ) &
 
-        #start_google_polling
         echo "$app_name server started"
     else
         echo "$app_name server is already running"
@@ -112,25 +110,13 @@ stop_server ()
 
         echo "$trailer"  >> $log_file
 
-        echo "MyNotes server and google monitoring stopped"
+        echo "MyNotes server monitoring stopped"
     else
         echo "mynotes server not running"
     fi
 }
 
 
-#######################################################################################################################
-# Start google polling
-#######################################################################################################################
-start_google_polling ()
-{
-    if [ -z $GOOGLE_POLLING ]
-    then
-        --GOOGLE-- >> $log_file &
-    else
-        echo "google polling already running"
-    fi
-}
 
 #######################################################################################################################
 # Reconnect to MongoDB database
@@ -220,10 +206,6 @@ schedule_note ()
 case "$option" in
     "start")
         start_server
-        ;;
-    
-    "start-google")
-        start_google_polling
         ;;
     
     "stop")
