@@ -1,1 +1,1 @@
-Removed publisher call on publish.sh because it`s done automatically
+Removed publisher call on publish.sh because its done automatically
