@@ -3,7 +3,7 @@
 #pushx_svc:${project_target_svc}
 #push_data:${project_target_svc}
 #pushx_bin:${project_target_bin}
-#short_alias:${project_target_bin}/mynotes.sh
+#alias:${project_target_bin}/mynotes.sh mynotes
 
 # Log file
 log_file=${project_log}
