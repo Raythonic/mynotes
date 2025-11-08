@@ -86,8 +86,6 @@ start_server ()
             local header=$(form_header "$app_name" "$version")
 
             echo "$header"  >> $log_file
-
-            --EXEC-- "$mydir" "$log_file"
         ) &
 
         #start_google_polling
