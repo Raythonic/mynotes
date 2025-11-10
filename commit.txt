@@ -1,1 +1,1 @@
-Testing new set_all_commits
+Publisher now in mybash
