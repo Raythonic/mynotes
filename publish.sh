@@ -1,2 +1,2 @@
 #!/bin/bash
-publish
+publish "$1"
