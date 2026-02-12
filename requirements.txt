@@ -74,7 +74,7 @@ mdurl==0.1.2
 mistune==3.2.0
 ml-dtypes==0.1.0
 more-itertools==10.8.0
--e git+ssh://git@github.com/Raythonic/mycmdline.git@8345d1343fafd8cd4c9b662ef2e8c9c212d5b49b#egg=mycmdline
+-e git+ssh://git@github.com/Raythonic/mycmdline.git@a12f41f9cc358b539453ac7dbc6dc5870025c5f5#egg=mycmdline
 nbclient==0.10.4
 nbconvert==7.17.0
 nbformat==5.10.4
