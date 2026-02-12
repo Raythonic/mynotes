@@ -1,3 +1,3 @@
 #!/bin/bash
-pip freeze > requirements.txt
+pip freeze > install/requirements.txt
 publish "$1"
