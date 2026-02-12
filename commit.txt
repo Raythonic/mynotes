@@ -1,1 +1,1 @@
-Testing that mybash still behaves
+handle pip freeze
