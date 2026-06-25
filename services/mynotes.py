@@ -398,13 +398,17 @@ def clear_all():
         msg = "All notes cleared from MongoDB database"
         log(msg, printit=True)
         
-        # Remove all input files from mynotes directory
+        # Remove all input files from mynotes directory (skip the command file)
         for filename in os.listdir(mynotes_dir):
-            if is_valid_filename(filename):
+            # Only process .txt files, not the command file
+            if is_valid_filename(filename) and filename != "command":
                 file_path = os.path.join(mynotes_dir, filename)
                 if os.path.isfile(file_path):
-                    os.remove(file_path)
-                    log(f"Removed input file: {file_path}")
+                    try:
+                        os.remove(file_path)
+                        log(f"Removed input file: {file_path}")
+                    except Exception as e:
+                        log(f"[WARNING] Failed to remove {file_path}: {str(e)}")
         
         log(f"Cleared all notes from {mynotes_dir}")
         print("All notes have been cleared.")
