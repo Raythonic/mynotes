@@ -149,6 +149,22 @@ def show_notes():
     except Exception as e:
         log(f"[ERROR] MongoDB find failed: {str(e)}")
 
+
+#################################################################################
+# Get count of messages in the database
+#################################################################################
+def get_message_count():
+    try:
+        total_count = collection.count_documents({})
+        pending_count = collection.count_documents({"displayed": False})
+        displayed_count = collection.count_documents({"displayed": True})
+        
+        msg = f"MongoDB messages: total={total_count}, pending={pending_count}, displayed={displayed_count}"
+        log(msg, printit=True)
+    
+    except Exception as e:
+        log(f"[ERROR] MongoDB count failed: {str(e)}")
+
 #################################################################################
 # Dump all notes from the database 
 #################################################################################
@@ -322,6 +338,11 @@ def process_command(command):
     # Show all the notes in the database
     if command == "show":
         show_notes()
+        return
+
+    # Get count of messages in the database
+    if command == "count":
+        get_message_count()
         return
 
     # Show all the notes in the database
