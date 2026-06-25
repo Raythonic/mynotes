@@ -32,7 +32,8 @@ MONGO_URI           = os.environ['MONGODB']
 MONGO_DB           = "personal"
 MONGO_COLLECTION   = "mynotes"
 
-client              = MongoClient(MONGO_URI)
+# Add serverSelectionTimeoutMS to prevent hanging on unreachable MongoDB
+client              = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, connectTimeoutMS=5000, socketTimeoutMS=5000)
 db                  = client[MONGO_DB]
 collection          = db[MONGO_COLLECTION]
 
@@ -93,11 +94,13 @@ def catchup():
 def reconnect():
     global client, db, collection
 
-    client              = MongoClient(MONGO_URI)
-    db                  = client[MONGO_DB]
-    collection          = db[MONGO_COLLECTION]
-
-    log(f"Reconnected to MongoDB")
+    try:
+        client              = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, connectTimeoutMS=5000, socketTimeoutMS=5000)
+        db                  = client[MONGO_DB]
+        collection          = db[MONGO_COLLECTION]
+        log(f"Reconnected to MongoDB")
+    except Exception as e:
+        log(f"[ERROR] Failed to reconnect to MongoDB: {str(e)}")
 
 
 #################################################################################
@@ -143,8 +146,8 @@ def show_notes():
             output = f"{note['name']}: {note['note']} scheduled: {note['sched']}"
             log(output, printit=True)
 
-    except:
-        log(f"MongoDB find failed")
+    except Exception as e:
+        log(f"[ERROR] MongoDB find failed: {str(e)}")
 
 #################################################################################
 # Dump all notes from the database 
@@ -159,8 +162,8 @@ def dump_notes():
         for note in notes:
             log(f"{note['name']}: {note['note']} scheduled: {note['sched']} {note['displayed']}", printit=True)
     
-    except:
-        log(f"MongoDB find failed")
+    except Exception as e:
+        log(f"[ERROR] MongoDB find failed: {str(e)}")
 
 
 #################################################################################
@@ -175,8 +178,8 @@ def purge_database():
         
         # Cancel all timers first
         stop_timers()
-    except:
-        log(f"MongoDB delete_many failed")
+    except Exception as e:
+        log(f"[ERROR] MongoDB delete_many failed: {str(e)}")
 
 
 #################################################################################
@@ -202,8 +205,8 @@ def save_note_to_db(name, sched, note):
         
         log(f"Note saved as '{name}' with timer set for {sched}")
     
-    except:
-        log(f"MongoDB update_one failed")
+    except Exception as e:
+        log(f"[ERROR] MongoDB update_one failed: {str(e)}")
 
 #################################################################################
 # Read a note from the database and notify KDE
@@ -218,7 +221,13 @@ def retrieve_note_and_show(name):
 
         if result:
             os.environ["DISPLAY"] = ":0"
-            subprocess.Popen(["notify-send", "--expire-time=0", "My Notes", result["note"]])
+            try:
+                # Run notify-send with a timeout to prevent hanging
+                subprocess.run(["notify-send", "--expire-time=0", "My Notes", result["note"]], timeout=5)
+            except subprocess.TimeoutExpired:
+                log(f"[WARNING] notify-send timeout for {name}")
+            except Exception as e:
+                log(f"[WARNING] notify-send failed: {str(e)}")
 
             # Mark note as displayed
             filter = {"name": name}
@@ -240,8 +249,8 @@ def retrieve_note_and_show(name):
         else:
             log(f"[ERROR] {name} was not found in MongoDB")
     
-    except:
-        log(f"MongoDB failed on retrieve_note_and_show")
+    except Exception as e:
+        log(f"[ERROR] retrieve_note_and_show failed: {str(e)}")
 
 
 #################################################################################
@@ -333,8 +342,13 @@ def process_command(command):
                 # Each note not displayed yet, schedule it for the time remaining
                 for note in notes:
                     cancel_note(note['name'])
-            except:
-                log(f"MongoDB find failed")
+            except Exception as e:
+                log(f"[ERROR] MongoDB find failed: {str(e)}")
+        return
+    
+    # Clear all notes from database and input directory
+    if command == "clear":
+        clear_all()
         return
     
     log(f"[ERROR] Command {command} not recognized")
@@ -348,6 +362,34 @@ def stop_timers():
         timer.cancel()
 
     log("All timers cancelled")
+
+
+#################################################################################
+# Clear all notes from database and input directory
+#################################################################################
+def clear_all():
+    try:
+        # Cancel all timers
+        stop_timers()
+        
+        # Delete all notes from database
+        collection.delete_many({})
+        msg = "All notes cleared from MongoDB database"
+        log(msg, printit=True)
+        
+        # Remove all input files from mynotes directory
+        for filename in os.listdir(mynotes_dir):
+            if is_valid_filename(filename):
+                file_path = os.path.join(mynotes_dir, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    log(f"Removed input file: {file_path}")
+        
+        log(f"Cleared all notes from {mynotes_dir}")
+        print("All notes have been cleared.")
+    
+    except Exception as e:
+        log(f"[ERROR] clear_all failed: {str(e)}")
 
 
 #################################################################################

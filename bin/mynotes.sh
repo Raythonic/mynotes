@@ -7,7 +7,7 @@
 #   3. schedule a note with the mynotes server: mynote "text..."
 #######################################################################################################################
 
-[ -z "$1" ] && echo "Usage: mynotes [start|stop|text]" && exit 0
+[ -z "$1" ] && echo "Usage: mynotes [start|stop|restart|show|status|check|cancel|purge|clear|text]" && exit 0
 
 # For crontab invocations
 if [ -z "$DISPLAY" ]
@@ -167,6 +167,14 @@ purge_database ()
 }
 
 #######################################################################################################################
+# Clear all notes from database and input directory
+#######################################################################################################################
+clear_notes ()
+{
+    echo "clear" > $mydir/command
+}
+
+#######################################################################################################################
 # Schedule a note
 #######################################################################################################################
 schedule_note ()
@@ -250,6 +258,10 @@ case "$option" in
 
     "purge")
         purge_database
+        ;;
+    
+    "clear")
+        clear_notes
         ;;
     
     *)
