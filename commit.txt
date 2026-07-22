@@ -1,1 +1,2 @@
 handle pip freeze
+add manpage loader script and publish hook
