@@ -2,7 +2,7 @@
 git config --global rerere.enabled true || exit 1
 git config --global rerere.autoupdate true || exit 1
 
-if [ "${HOSTNAME:-$(hostname)}" != "walkubu" ]
+if [ "${MY_APP_BUILD_SERVER:-}" != "Y" ]
 then
     if git show-ref --verify --quiet refs/heads/develop
     then
