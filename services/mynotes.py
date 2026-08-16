@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/home/rwalk/rwalkvenv3.12/bin/python3
 #######################################################################################################################
 # This python program is a continously running "server" that scans for work in /home/rwalk/mynotes/nnnnn.txt file
 # then logs those messages in mongodb.  There is a schedule associated with the note.  When that expires,
